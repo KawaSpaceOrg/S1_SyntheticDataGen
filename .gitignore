@@ -1,0 +1,10 @@
+# Archived planning / scratch docs (kept locally, not tracked)
+archive/
+
+# Generated output data
+pipeline_output.csv
+
+# MATLAB scratch
+*.asv
+*.mat
+slprj/

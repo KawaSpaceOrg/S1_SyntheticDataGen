@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell($root = \"e:\\\\Kawa Space\\\\S1_SyntheticDataGen\"; New-Item -ItemType Directory -Force -Path \"$root\\\\archive\" | Out-Null; Move-Item -Path \"$root\\\\implementation_plan.md\",\"$root\\\\implemented_plan.md\",\"$root\\\\Fixing Phased Array Channel Error.md\" -Destination \"$root\\\\archive\" -Force; Get-ChildItem \"$root\\\\archive\" | Select-Object Name)",
+      "PowerShell($root = \"e:\\\\Kawa Space\\\\S1_SyntheticDataGen\"; Get-ChildItem -Force $root | Select-Object Mode, Name; \"----- archive -----\"; Get-ChildItem \"$root\\\\archive\" | Select-Object Name)"
+    ]
+  }
+}
