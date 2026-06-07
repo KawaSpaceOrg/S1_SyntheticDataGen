@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RF Signal Processing Pipeline — Interactive Guide</title>
+
+<!-- MathJax for LaTeX -->
+<script>
+MathJax = {
+  tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
+  options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] }
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-chtml.min.js"></script>
+<!-- Plotly -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+
+<style>
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --border: #30363d;
+  --accent: #58a6ff;
+  --accent2: #3fb950;
+  --accent3: #f78166;
+  --accent4: #d2a8ff;
+  --text: #c9d1d9;
+  --text-dim: #8b949e;
+  --text-bright: #f0f6fc;
+  --radius: 10px;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* ===== LAYOUT ===== */
+header {
+  background: linear-gradient(135deg, #0d1117 0%, #1a2332 50%, #0d1117 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 48px 24px 36px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+header::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(88,166,255,.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+header h1 {
+  font-size: clamp(1.6rem, 4vw, 2.8rem);
+  color: var(--text-bright);
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+header p.subtitle {
+  color: var(--text-dim);
+  margin-top: 8px;
+  font-size: 1rem;
+  max-width: 600px;
+  margin-inline: auto;
+}
+
+/* ===== NAV TABS ===== */
+nav#phase-nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; gap: 0;
+  padding: 0 12px;
+  overflow-x: auto;
+}
+nav#phase-nav button {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-dim);
+  padding: 14px 18px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: .4px;
+  text-transform: uppercase;
+  border-bottom: 3px solid transparent;
+  transition: color .2s, border-color .2s;
+  white-space: nowrap;
+}
+nav#phase-nav button:hover { color: var(--text); }
+nav#phase-nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ===== SECTIONS ===== */
+main { max-width: 1400px; margin: 0 auto; padding: 0 28px 80px; }
+
+.phase {
+  display: none;
+  animation: fadeIn .35s ease;
+}
+.phase.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.phase-header {
+  padding: 40px 0 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 32px;
+}
+.phase-header .phase-tag {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--accent); margin-bottom: 6px;
+}
+.phase-header h2 {
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  color: var(--text-bright); font-weight: 700;
+}
+.phase-header p {
+  color: var(--text-dim); margin-top: 6px; max-width: 72ch;
+}
+
+/* ===== GRID ===== */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.card h3 {
+  font-size: 1rem; font-weight: 700;
+  color: var(--text-bright); margin-bottom: 10px;
+}
+.card p, .card li { color: var(--text); font-size: 0.94rem; }
+.card ul { padding-left: 18px; }
+.card ul li { margin-bottom: 4px; }
+
+/* ===== MATH BOXES ===== */
+.math-box {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin: 16px 0;
+  overflow-x: auto;
+}
+.math-box .label {
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--accent); margin-bottom: 8px;
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end;
+}
+.ctrl-group { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+.ctrl-group label {
+  font-size: 0.78rem; font-weight: 600; color: var(--text-dim);
+  letter-spacing: .5px; text-transform: uppercase;
+}
+.ctrl-group span.val {
+  font-size: 0.9rem; color: var(--accent); font-weight: 700;
+}
+input[type=range] {
+  width: 100%; accent-color: var(--accent);
+  cursor: pointer; height: 6px; background: var(--border);
+  border-radius: 3px; outline: none; border: none;
+  -webkit-appearance: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px; height: 16px;
+  background: var(--accent); border-radius: 50%;
+  cursor: pointer;
+}
+button.btn {
+  background: var(--accent); color: #000;
+  border: none; border-radius: 6px;
+  padding: 9px 22px; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; letter-spacing: .4px;
+  transition: opacity .15s;
+}
+button.btn:hover { opacity: .85; }
+button.btn.secondary {
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* ===== PLOTS ===== */
+.plot-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+/* ===== CALLOUT ===== */
+.callout {
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-size: 0.9rem;
+  display: flex; gap: 10px;
+}
+.callout.info { background: rgba(88,166,255,.08); border-left: 3px solid var(--accent); }
+.callout.success { background: rgba(63,185,80,.08); border-left: 3px solid var(--accent2); }
+.callout.warn { background: rgba(247,129,102,.08); border-left: 3px solid var(--accent3); }
+.callout .icon { font-size: 1.1rem; }
+
+/* ===== STEP INDICATORS ===== */
+.step-badge {
+  display: inline-block;
+  background: var(--accent); color: #000;
+  border-radius: 50%; width: 26px; height: 26px;
+  line-height: 26px; text-align: center;
+  font-size: 0.75rem; font-weight: 800;
+  margin-right: 8px; flex-shrink: 0;
+}
+
+/* ===== PIPELINE OVERVIEW ===== */
+.pipeline-overview {
+  display: flex; align-items: center; flex-wrap: wrap;
+  gap: 0; margin: 24px 0;
+}
+.pipe-node {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 16px;
+  font-size: 0.8rem; font-weight: 600; color: var(--text-bright);
+  cursor: pointer; transition: background .2s, border-color .2s;
+  white-space: nowrap;
+}
+.pipe-node:hover { background: rgba(88,166,255,.12); border-color: var(--accent); }
+.pipe-arrow {
+  color: var(--text-dim); padding: 0 6px; font-size: 1.1rem;
+}
+
+/* ===== SUMMARY TABLE ===== */
+.summary-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 12px; }
+.summary-table th, .summary-table td {
+  padding: 10px 14px; border: 1px solid var(--border); text-align: left;
+}
+.summary-table th { background: var(--surface2); color: var(--text-bright); font-weight: 700; }
+.summary-table tr:hover td { background: rgba(88,166,255,.04); }
+
+/* ===== FREQ LABEL BADGES ===== */
+.badge {
+  display: inline-block; border-radius: 4px;
+  padding: 1px 8px; font-size: 0.75rem; font-weight: 700;
+  margin: 0 2px;
+}
+.badge.rf { background: rgba(88,166,255,.18); color: #58a6ff; }
+.badge.lo { background: rgba(63,185,80,.18); color: #3fb950; }
+.badge.if { background: rgba(247,129,102,.18); color: #f78166; }
+.badge.bb { background: rgba(210,168,255,.18); color: #d2a8ff; }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <h1>🛰 RF Signal Processing Pipeline</h1>
+  <p class="subtitle">An interactive, mathematical walkthrough — from chirp generation to digital baseband sampling</p>
+</header>
+
+<!-- ===== NAV ===== -->
+<nav id="phase-nav">
+  <button class="active" onclick="showPhase('intro',this)">0 · Overview</button>
+  <button onclick="showPhase('chirp',this)">1 · Chirp</button>
+  <button onclick="showPhase('modulation',this)">2 · RF Modulation</button>
+  <button onclick="showPhase('propagation',this)">3 · Propagation</button>
+  <button onclick="showPhase('downconv',this)">4 · Downconversion</button>
+  <button onclick="showPhase('baseband',this)">5 · Baseband IQ</button>
+  <button onclick="showPhase('adc',this)">6 · ADC</button>
+  <button onclick="showPhase('summary',this)">7 · Summary</button>
+</nav>
+
+<main>
+
+<!-- ========== PHASE 0: OVERVIEW ========== -->
+<section class="phase active" id="phase-intro">
+  <div class="phase-header">
+    <div class="phase-tag">Introduction</div>
+    <h2>The Complete RF Signal Processing Pipeline</h2>
+    <p>Click any stage below or use the tabs above to explore each step interactively.</p>
+  </div>
+
+  <div class="card">
+    <h3>What is an RF Signal Processing Pipeline?</h3>
+    <p>A radar or communications system must generate a waveform, transmit it, receive a distorted/attenuated copy, and then convert it into digital numbers a computer can process. Each stage has precise mathematics behind it.</p>
+    <br>
+    <p>This guide walks through the exact same stages that appear in a typical synthetic radar simulation:</p>
+  </div>
+
+  <div class="pipeline-overview">
+    <div class="pipe-node" onclick="showPhase('chirp', getNavBtn(1))">⚡ Chirp Generation</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node" onclick="showPhase('modulation', getNavBtn(2))">📡 RF Modulation</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node" onclick="showPhase('propagation', getNavBtn(3))">🌊 Propagation</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node" onclick="showPhase('downconv', getNavBtn(4))">🔀 Downconversion</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node" onclick="showPhase('baseband', getNavBtn(5))">📊 Baseband IQ</div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-node" onclick="showPhase('adc', getNavBtn(6))">💾 ADC Sampling</div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>🎯 Why Chirp?</h3>
+      <p>A linear frequency-modulated (LFM) chirp sweeps frequency over time, enabling time-frequency analysis and high range-resolution via pulse compression. Used in FMCW radar, sonar, and spread-spectrum comms.</p>
+    </div>
+    <div class="card">
+      <h3>🔢 Why Baseband Simulation?</h3>
+      <p>Simulating the full RF waveform at 10 GHz requires billions of samples per second. Instead, we simulate only the slowly varying baseband envelope (I and Q channels), then up-convert mathematically — orders of magnitude cheaper.</p>
+    </div>
+    <div class="card">
+      <h3>📐 Key Parameters</h3>
+      <ul>
+        <li><strong>$f_0$</strong> — Start frequency of chirp</li>
+        <li><strong>$B$</strong> — Bandwidth (frequency sweep)</li>
+        <li><strong>$T$</strong> — Pulse duration</li>
+        <li><strong>$k = B/T$</strong> — Chirp rate (Hz/s)</li>
+        <li><strong>$f_c$</strong> — Carrier (RF center) frequency</li>
+        <li><strong>$f_{LO}$</strong> — Local oscillator frequency</li>
+        <li><strong>$f_s$</strong> — Sampling rate (ADC)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📖 Mathematical Convention</h3>
+      <p>We use complex exponential notation throughout. The physical (real) signal is always the real part of the complex representation. This lets us use powerful tools from complex analysis and DSP theory.</p>
+      <div class="math-box" style="margin-top:12px;">
+        $$\text{Physical signal: } x(t) = \Re\{\tilde{x}(t)\}$$
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PHASE 1: CHIRP ========== -->
+<section class="phase" id="phase-chirp">
+  <div class="phase-header">
+    <div class="phase-tag">Phase 1</div>
+    <h2>Pulsed LFM Chirp Generation</h2>
+    <p>A pulsed Linear Frequency-Modulated (LFM) chirp is the core radar waveform. The transmitter fires a short chirp burst of duration $T$, stays silent for the rest of the Pulse Repetition Interval (PRI), then repeats — enabling range measurement while controlling average power.</p>
+  </div>
+
+  <div class="card">
+    <h3>What is a Chirp?</h3>
+    <p>A chirp is a sinusoidal signal whose frequency changes over time. In a <em>linear</em> chirp, the frequency sweeps at a constant rate $k$ called the <strong>chirp rate</strong>. The instantaneous frequency at time $t$ within a pulse is:</p>
+    <div class="math-box">
+      <div class="label">Instantaneous Frequency</div>
+      $$f_i(t) = f_0 + k \cdot t, \quad k = \frac{B}{T}$$
+    </div>
+    <p>where $f_0$ is the start frequency, $B$ is the bandwidth, and $T$ is the pulse duration.</p>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Single-Pulse Chirp — Derivation</div>
+    <p style="font-size:.88rem;color:var(--text-dim);margin-bottom:8px;">Phase = integral of instantaneous frequency:</p>
+    $$\phi(t) = 2\pi \int_0^t f_i(\tau)\, d\tau = 2\pi \left( f_0 t + \frac{k}{2} t^2 \right)$$
+    <br>
+    $$\boxed{s(t) = \cos\!\left(2\pi f_0 t + \pi k t^2\right), \quad 0 \le t \le T}$$
+    <p style="font-size:.88rem;color:var(--text-dim);margin-top:8px;">Complex analytic form: $\;\tilde{s}(t) = e^{j2\pi(f_0 t + \frac{k}{2} t^2)}$</p>
+  </div>
+
+  <div class="math-box" style="border-left-color:var(--accent2);">
+    <div class="label" style="color:var(--accent2);">Pulsed LFM — Gating with a Rectangular Window</div>
+    <p style="font-size:.88rem;color:var(--text);margin-bottom:10px;">The pulsed waveform gates the chirp with a rectangular envelope and repeats it every $T_{PRI}$ seconds:</p>
+    $$s_p(t) = \sum_{n=0}^{N_p - 1} \underbrace{\mathrm{rect}\!\left(\frac{t - nT_{PRI} - T/2}{T}\right)}_{\text{pulse gate}} \cdot \cos\!\left(2\pi f_0(t - nT_{PRI}) + \pi k(t - nT_{PRI})^2\right)$$
+    <p style="font-size:.88rem;color:var(--text);margin-top:10px;">where $\mathrm{rect}(u) = 1$ for $|u| \le \tfrac{1}{2}$, else $0$. Two derived quantities:</p>
+    $$\text{Duty cycle} = \frac{T}{T_{PRI}}, \qquad \text{PRF} = \frac{1}{T_{PRI}}$$
+    <p style="font-size:.88rem;color:var(--text-dim);margin-top:6px;">Low duty cycle (≪1) means the receiver is mostly listening, not transmitting — essential for monostatic radar.</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Start Freq $f_0$ <span class="val" id="f0-val">10 MHz</span></label>
+      <input type="range" id="chirp-f0" min="1" max="50" step="1" value="10" oninput="updateChirp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Bandwidth $B$ <span class="val" id="bw-val">20 MHz</span></label>
+      <input type="range" id="chirp-bw" min="5" max="80" step="1" value="20" oninput="updateChirp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Pulse duration $T$ <span class="val" id="dur-val">2.0 µs</span></label>
+      <input type="range" id="chirp-dur" min="0.5" max="5" step="0.1" value="2.0" oninput="updateChirp()">
+    </div>
+    <div class="ctrl-group">
+      <label>PRI / T ratio <span class="val" id="pri-val">× 4</span></label>
+      <input type="range" id="chirp-pri" min="2" max="12" step="0.5" value="4" oninput="updateChirp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Show <span class="val"></span></label>
+      <select id="chirp-show" onchange="updateChirp()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;">
+        <option value="pulsed">Pulsed Chirp (multi-pulse)</option>
+        <option value="time">Single Pulse — Time Domain</option>
+        <option value="spec">Single Pulse — Spectrogram</option>
+        <option value="phase">Instantaneous Frequency</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="plot-container">
+    <div id="chirp-plot" style="height:400px;"></div>
+  </div>
+
+  <div id="chirp-duty-info" class="callout info" style="display:none;">
+    <span class="icon">📡</span>
+    <span id="chirp-duty-text"></span>
+  </div>
+
+  <div class="callout info">
+    <span class="icon">💡</span>
+    <span><strong>Time-Bandwidth Product:</strong> $TB = B \cdot T$. Higher TB → better range resolution and more SNR gain from pulse compression. Typical radar: $TB = 100$ to $10{,}000$. The <em>pulsing</em> adds another dimension — duty cycle controls average power vs. peak power.</span>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Complex Baseband Chirp</h3>
+      <p>In simulation we work with the baseband version (centered at DC):</p>
+      <div class="math-box" style="margin-top:10px;">
+        $$s_{BB}(t) = e^{j\pi k t^2}, \quad 0 \le t \le T$$
+        $$s_{BB}(t) = 0, \quad T < t < T_{PRI}$$
+      </div>
+      <p style="margin-top:8px;">The pulsing is encoded as a simple zero-fill between pulses before up-conversion.</p>
+    </div>
+    <div class="card">
+      <h3>Why Pulsed?</h3>
+      <ul>
+        <li><strong>Range gating:</strong> the delay of the echo tells you $d = c\tau/2$</li>
+        <li><strong>Tx/Rx isolation:</strong> transmitter is off while receiver listens</li>
+        <li><strong>Average power control:</strong> duty cycle = $T/T_{PRI}$</li>
+        <li><strong>Doppler processing:</strong> phase difference across pulses gives velocity</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ========== PHASE 2: RF MODULATION ========== -->
+<section class="phase" id="phase-modulation">
+  <div class="phase-header">
+    <div class="phase-tag">Phase 2</div>
+    <h2>Carrier Wave &amp; RF Modulation</h2>
+    <p>The baseband chirp must be up-converted to a radio frequency carrier before transmission. This is done via IQ (In-phase / Quadrature) modulation.</p>
+  </div>
+
+  <div class="card">
+    <h3>IQ Modulation — The Core Idea</h3>
+    <p>Any bandpass signal can be written in terms of two baseband signals $I(t)$ and $Q(t)$:</p>
+    <div class="math-box">
+      <div class="label">RF Bandpass Signal</div>
+      $$x_{RF}(t) = I(t)\cos(2\pi f_c t) - Q(t)\sin(2\pi f_c t)$$
+      $$= \Re\!\left\{(I(t) + jQ(t))\,e^{j2\pi f_c t}\right\}$$
+    </div>
+    <p>For a chirp: $I(t) = \cos(\pi k t^2)$, $Q(t) = \sin(\pi k t^2)$, so $I + jQ = e^{j\pi k t^2}$.</p>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Why multiply by $e^{j2\pi f_c t}$?</div>
+    <p style="font-size:.88rem;color:var(--text);margin-bottom:10px;">Multiplication by $e^{j2\pi f_c t}$ in the time domain is equivalent to a <strong>frequency shift</strong> of $+f_c$ in the frequency domain:</p>
+    $$\mathcal{F}\{x_{BB}(t)\cdot e^{j2\pi f_c t}\} = X_{BB}(f - f_c)$$
+    <p style="font-size:.88rem;color:var(--text);margin-top:8px;">This moves the baseband spectrum (centered at 0 Hz) up to be centered at the carrier frequency $f_c$.</p>
+    <br>
+    <p style="font-size:.88rem;color:var(--text);">The <strong>real part</strong> is taken because physical antennas can only transmit real-valued electromagnetic fields.</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Carrier $f_c$ <span class="val" id="fc-val">200 MHz</span></label>
+      <input type="range" id="mod-fc" min="50" max="500" step="10" value="200" oninput="updateMod()">
+    </div>
+    <div class="ctrl-group">
+      <label>Chirp BW $B$ <span class="val" id="mod-bw-val">20 MHz</span></label>
+      <input type="range" id="mod-bw" min="5" max="60" step="5" value="20" oninput="updateMod()">
+    </div>
+    <div class="ctrl-group">
+      <label>View <span class="val"></span></label>
+      <select id="mod-view" onchange="updateMod()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;">
+        <option value="time">Time domain (I, Q, RF)</option>
+        <option value="freq">Frequency spectrum</option>
+        <option value="envelope">Envelope vs RF</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="plot-container">
+    <div id="mod-plot" style="height:380px;"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>I Channel (In-phase)</h3>
+      <p>$I(t) = \cos(\pi k t^2)$ — the real part of the baseband chirp. Modulated onto a cosine carrier $\cos(2\pi f_c t)$.</p>
+    </div>
+    <div class="card">
+      <h3>Q Channel (Quadrature)</h3>
+      <p>$Q(t) = \sin(\pi k t^2)$ — the imaginary part. Modulated onto a sine carrier $-\sin(2\pi f_c t)$. The 90° phase offset gives full vector representation.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="icon">📡</span>
+    <span><strong>RF Envelope:</strong> The instantaneous amplitude $A(t) = \sqrt{I(t)^2 + Q(t)^2}$. For a chirp, $A(t) = 1$ (constant). The envelope does not oscillate at the carrier frequency — only the carrier itself does. This is why envelope detection works.</span>
+  </div>
+</section>
+
+<!-- ========== PHASE 3: PROPAGATION ========== -->
+<section class="phase" id="phase-propagation">
+  <div class="phase-header">
+    <div class="phase-tag">Phase 3</div>
+    <h2>Propagation &amp; Attenuation</h2>
+    <p>As the RF signal travels from transmitter to receivers, it undergoes time delay and amplitude attenuation. Four receivers at different distances receive different copies of the signal.</p>
+  </div>
+
+  <div class="card">
+    <h3>Free-Space Propagation Model</h3>
+    <p>The voltage amplitude at distance $d$ from the transmitter follows an exponential decay (or inverse-square law in free space):</p>
+    <div class="math-box">
+      <div class="label">Amplitude Attenuation</div>
+      $$A(d) = A_0 \, e^{-\alpha d}$$
+      <p style="font-size:.88rem;color:var(--text-dim);margin-top:8px;">$A_0$ = transmit amplitude, $\alpha$ = attenuation coefficient (Np/m or dB/m)</p>
+    </div>
+    <p>The received signal is also <strong>time-delayed</strong> by the propagation time $\tau = d/c$:</p>
+    <div class="math-box">
+      <div class="label">Received Signal</div>
+      $$r(t) = A(d)\cdot s(t - \tau), \quad \tau = \frac{d}{c}$$
+    </div>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Free-Space Path Loss (Friis Equation)</div>
+    $$P_r = P_t \left(\frac{\lambda}{4\pi d}\right)^2 G_t G_r$$
+    <p style="font-size:.88rem;color:var(--text-dim);margin-top:6px;">In voltage terms: $A(d) \propto 1/d$ for far-field free-space. The exponential model is used for lossy media (atmosphere, cables).</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Attenuation $\alpha$ <span class="val" id="atten-val">0.5</span></label>
+      <input type="range" id="atten-alpha" min="0.05" max="2" step="0.05" value="0.5" oninput="updateProp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Rx1 distance <span class="val" id="d1-val">1.0 m</span></label>
+      <input type="range" id="prop-d1" min="0.5" max="4" step="0.1" value="1.0" oninput="updateProp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Rx2 distance <span class="val" id="d2-val">2.0 m</span></label>
+      <input type="range" id="prop-d2" min="0.5" max="4" step="0.1" value="2.0" oninput="updateProp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Rx3 distance <span class="val" id="d3-val">3.0 m</span></label>
+      <input type="range" id="prop-d3" min="0.5" max="4" step="0.1" value="3.0" oninput="updateProp()">
+    </div>
+    <div class="ctrl-group">
+      <label>Rx4 distance <span class="val" id="d4-val">4.0 m</span></label>
+      <input type="range" id="prop-d4" min="0.5" max="4" step="0.1" value="4.0" oninput="updateProp()">
+    </div>
+  </div>
+
+  <div class="plot-container">
+    <div id="prop-plot" style="height:420px;"></div>
+  </div>
+
+  <div class="plot-container">
+    <div id="prop-amp-plot" style="height:260px;"></div>
+  </div>
+
+  <div class="callout warn">
+    <span class="icon">⚠️</span>
+    <span><strong>Noise in real systems:</strong> Each receiver also picks up thermal noise $n(t) \sim \mathcal{N}(0, \sigma^2)$. The signal-to-noise ratio degrades with distance: $\text{SNR}(d) \propto A(d)^2 / \sigma^2$. Pulse compression (matched filtering) recovers $\approx TB$ dB of SNR.</span>
+  </div>
+</section>
+
+<!-- ========== PHASE 4: DOWNCONVERSION ========== -->
+<section class="phase" id="phase-downconv">
+  <div class="phase-header">
+    <div class="phase-tag">Phase 4</div>
+    <h2>Downconversion — Mixing to Baseband</h2>
+    <p>The received RF signal must be shifted back down from the carrier frequency to baseband (near DC) for efficient digital processing. This is done by mixing with a Local Oscillator (LO).</p>
+  </div>
+
+  <div class="card">
+    <h3>The Mixing Operation</h3>
+    <p>A <strong>mixer</strong> multiplies the incoming RF signal by the LO reference. Using the product-to-sum identity:</p>
+    <div class="math-box">
+      <div class="label">Mixing Identity</div>
+      $$\cos(2\pi f_{RF} t)\cdot\cos(2\pi f_{LO} t) = \frac{1}{2}\cos(2\pi(f_{RF}-f_{LO})t) + \frac{1}{2}\cos(2\pi(f_{RF}+f_{LO})t)$$
+    </div>
+    <p>This produces <strong>two output components</strong>: a <span class="badge if">difference (IF)</span> at $f_{RF} - f_{LO}$ and a <span class="badge rf">sum</span> at $f_{RF} + f_{LO}$.</p>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Full Downconversion Chain</div>
+    $$x_{RF}(t) = \Re\{x_{BB}(t)\, e^{j2\pi f_c t}\}$$
+    $$\downarrow \text{ multiply by } e^{-j2\pi f_{LO} t} \text{ (complex demodulation)}$$
+    $$x_{IF}(t) = x_{BB}(t)\, e^{j2\pi(f_c - f_{LO})t}$$
+    $$\downarrow \text{ if } f_{LO} = f_c \text{ (direct conversion / homodyne)}$$
+    $$\boxed{x_{IF}(t) = x_{BB}(t) = I(t) + jQ(t)}$$
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>RF freq $f_{RF}$ <span class="val" id="dconv-frf-val">100 MHz</span></label>
+      <input type="range" id="dconv-frf" min="40" max="200" step="5" value="100" oninput="updateDownconv()">
+    </div>
+    <div class="ctrl-group">
+      <label>LO freq $f_{LO}$ <span class="val" id="dconv-flo-val">90 MHz</span></label>
+      <input type="range" id="dconv-flo" min="30" max="200" step="5" value="90" oninput="updateDownconv()">
+    </div>
+    <div class="ctrl-group">
+      <label>Show <span class="val"></span></label>
+      <select id="dconv-view" onchange="updateDownconv()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;">
+        <option value="time">Time domain signals</option>
+        <option value="freq">Frequency domain</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="plot-container">
+    <div id="dconv-plot" style="height:420px;"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Low-pass Filter (LPF)</h3>
+      <p>After mixing, a <strong>low-pass filter</strong> removes the sum component at $f_{RF} + f_{LO}$. Only the <span class="badge if">difference component</span> at $|f_{RF} - f_{LO}|$ passes through. This is the Intermediate Frequency (IF) signal, or baseband if $f_{LO} = f_{RF}$.</p>
+    </div>
+    <div class="card">
+      <h3>Homodyne vs Heterodyne</h3>
+      <ul>
+        <li><strong>Homodyne</strong>: $f_{LO} = f_c$ → direct to baseband in one step.</li>
+        <li><strong>Heterodyne</strong>: $f_{LO} \ne f_c$ → output is at IF $= f_c - f_{LO}$, then filtered again.</li>
+      </ul>
+      <p style="margin-top:8px;">Modern software-defined radios mostly use homodyne (direct conversion) with IQ demodulation.</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <span class="icon">💡</span>
+    <span><strong>IQ Demodulation:</strong> The real mixer gives only $I(t)$. To recover $Q(t)$, a second mixer with a 90°-shifted LO ($\sin(2\pi f_{LO}t)$) is used. Together they recover the full complex baseband $x_{BB}(t) = I(t) + jQ(t)$.</span>
+  </div>
+</section>
+
+<!-- ========== PHASE 5: BASEBAND IQ ========== -->
+<section class="phase" id="phase-baseband">
+  <div class="phase-header">
+    <div class="phase-tag">Phase 5</div>
+    <h2>Baseband Equivalent Signal (IQ Representation)</h2>
+    <p>The most important concept in modern RF simulation: represent the entire RF waveform using just two slowly-varying signals I and Q, without ever explicitly computing the high-frequency carrier.</p>
+  </div>
+
+  <div class="card">
+    <h3>The Baseband Equivalent Signal</h3>
+    <p>Any bandpass signal $x(t)$ with bandwidth $B \ll f_c$ can be written as:</p>
+    <div class="math-box">
+      <div class="label">Bandpass Signal Decomposition</div>
+      $$x(t) = I(t)\cos(2\pi f_c t) - Q(t)\sin(2\pi f_c t)$$
+    </div>
+    <p>The <strong>complex baseband equivalent</strong> is:</p>
+    <div class="math-box">
+      <div class="label">Baseband Equivalent (Analytic Signal)</div>
+      $$x_{BB}(t) = I(t) + jQ(t) \equiv A(t)\, e^{j\phi(t)}$$
+    </div>
+    <p>where $A(t) = \sqrt{I^2+Q^2}$ is the <em>envelope</em> and $\phi(t) = \arctan(Q/I)$ is the <em>phase</em>.</p>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Why This Works — Sampling Rate Comparison</div>
+    <p style="font-size:.88rem;color:var(--text);margin-bottom:8px;">By the Nyquist theorem, to sample an RF signal at $f_c = 10\,\text{GHz}$ with bandwidth $B = 100\,\text{MHz}$:</p>
+    $$f_{s,RF} \ge 2f_c = 20\,\text{GHz} \quad \Longrightarrow \quad 2\times10^{10} \text{ samples/sec}$$
+    <p style="font-size:.88rem;color:var(--text);margin: 8px 0;">But the baseband equivalent only needs:</p>
+    $$f_{s,BB} \ge 2B = 200\,\text{MHz} \quad \Longrightarrow \quad 2\times10^8 \text{ samples/sec}$$
+    <p style="font-size:.88rem;color:var(--accent);margin-top:8px;font-weight:700;">Savings factor: $f_c / B = 100\times$ fewer samples!</p>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Carrier $f_c$ <span class="val" id="bb-fc-val">50 MHz</span></label>
+      <input type="range" id="bb-fc" min="20" max="200" step="5" value="50" oninput="updateBaseband()">
+    </div>
+    <div class="ctrl-group">
+      <label>Chirp rate $k$ <span class="val" id="bb-k-val">10 MHz/µs</span></label>
+      <input type="range" id="bb-k" min="2" max="40" step="1" value="10" oninput="updateBaseband()">
+    </div>
+    <div class="ctrl-group">
+      <label>Show <span class="val"></span></label>
+      <select id="bb-view" onchange="updateBaseband()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;">
+        <option value="compare">RF vs Baseband comparison</option>
+        <option value="iq">I and Q separately</option>
+        <option value="phasor">Phasor trajectory</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="plot-container">
+    <div id="bb-plot" style="height:400px;"></div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>I Channel (In-phase)</h3>
+      $$I(t) = \cos\!\left(\pi k t^2\right)$$
+      <p>The projection of the phasor onto the real axis. Slowly oscillating compared to the carrier.</p>
+    </div>
+    <div class="card">
+      <h3>Q Channel (Quadrature)</h3>
+      $$Q(t) = \sin\!\left(\pi k t^2\right)$$
+      <p>The projection onto the imaginary axis. 90° phase-shifted from I. Together, I+jQ traces a unit circle in the complex plane.</p>
+    </div>
+  </div>
+
+  <div class="callout success">
+    <span class="icon">✅</span>
+    <span><strong>The phasor trajectory:</strong> For a chirp, $|x_{BB}(t)| = 1$ always. The phasor rotates at the instantaneous baseband frequency $f_i(t) = kt$, which is why you see an accelerating spiral in the phasor plot.</span>
+  </div>
+</section>
+
+<!-- ========== PHASE 6: ADC ========== -->
+<section class="phase" id="phase-adc">
+  <div class="phase-header">
+    <div class="phase-tag">Phase 6</div>
+    <h2>Analog-to-Digital Conversion (ADC)</h2>
+    <p>The final step converts the continuous-time analog baseband signal into discrete-time digital samples that a DSP processor or FPGA can process.</p>
+  </div>
+
+  <div class="card">
+    <h3>What is an ADC?</h3>
+    <p>An Analog-to-Digital Converter samples an analog waveform at a fixed sampling rate $f_s = 1/T_s$ and quantizes each sample to a finite number of bits. The output is a sequence of numbers:</p>
+    <div class="math-box">
+      <div class="label">Sampling Theorem</div>
+      $$x[n] = x(t)\big|_{t = nT_s} = x(nT_s), \quad n = 0, 1, 2, \ldots$$
+      <p style="font-size:.88rem;color:var(--text-dim);margin-top:6px;">Nyquist criterion: $f_s \ge 2B_{\max}$ to avoid aliasing.</p>
+    </div>
+  </div>
+
+  <div class="math-box">
+    <div class="label">Quantization — Bit Depth</div>
+    $$\Delta = \frac{V_{FS}}{2^N}, \quad x_q[n] = \Delta \cdot \text{round}\!\left(\frac{x[n]}{\Delta}\right)$$
+    <p style="font-size:.88rem;color:var(--text-dim);margin-top:6px;">$N$ = number of bits, $V_{FS}$ = full-scale voltage range, $\Delta$ = quantization step. Quantization noise power: $\sigma_q^2 \approx \Delta^2/12$.</p>
+    <br>
+    <p style="font-size:.88rem;color:var(--text);">Dynamic range (SQNR) of an $N$-bit ADC:</p>
+    $$\text{SQNR} \approx 6.02N + 1.76 \text{ dB}$$
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="ctrl-group">
+      <label>Sampling rate $f_s$ <span class="val" id="adc-fs-val">200 MHz</span></label>
+      <input type="range" id="adc-fs" min="20" max="500" step="10" value="200" oninput="updateADC()">
+    </div>
+    <div class="ctrl-group">
+      <label>Signal freq <span class="val" id="adc-fsig-val">30 MHz</span></label>
+      <input type="range" id="adc-fsig" min="5" max="150" step="5" value="30" oninput="updateADC()">
+    </div>
+    <div class="ctrl-group">
+      <label>Bit depth $N$ <span class="val" id="adc-bits-val">8 bits</span></label>
+      <input type="range" id="adc-bits" min="2" max="16" step="1" value="8" oninput="updateADC()">
+    </div>
+    <div class="ctrl-group">
+      <label>View <span class="val"></span></label>
+      <select id="adc-view" onchange="updateADC()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:.85rem;">
+        <option value="sample">Sampling visualization</option>
+        <option value="quant">Quantization</option>
+        <option value="alias">Aliasing demo</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="plot-container">
+    <div id="adc-plot" style="height:380px;"></div>
+  </div>
+
+  <div id="adc-info" class="grid-2" style="margin-top:4px;"></div>
+
+  <div class="callout warn">
+    <span class="icon">⚠️</span>
+    <span><strong>Aliasing:</strong> If $f_s < 2 f_{signal}$, the sampled signal appears at the wrong frequency: $f_{alias} = |f_{signal} - \text{round}(f_{signal}/f_s)\cdot f_s|$. Try setting $f_{signal}$ above $f_s / 2$ in the slider above to see this effect.</span>
+  </div>
+</section>
+
+<!-- ========== PHASE 7: SUMMARY ========== -->
+<section class="phase" id="phase-summary">
+  <div class="phase-header">
+    <div class="phase-tag">Summary</div>
+    <h2>End-to-End Pipeline Summary</h2>
+    <p>Putting it all together — the complete RF signal chain from waveform generation to digital samples.</p>
+  </div>
+
+  <table class="summary-table">
+    <thead>
+      <tr>
+        <th>Stage</th>
+        <th>Operation</th>
+        <th>Key Equation</th>
+        <th>Domain</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>1. Chirp Gen</strong></td>
+        <td>Generate LFM waveform</td>
+        <td>$s(t) = e^{j\pi k t^2}$</td>
+        <td>Baseband, continuous</td>
+      </tr>
+      <tr>
+        <td><strong>2. RF Modulation</strong></td>
+        <td>Up-convert to carrier $f_c$</td>
+        <td>$x_{RF}(t) = \Re\{s(t)\,e^{j2\pi f_c t}\}$</td>
+        <td>RF bandpass, continuous</td>
+      </tr>
+      <tr>
+        <td><strong>3. Propagation</strong></td>
+        <td>Delay + attenuation</td>
+        <td>$r(t) = A_0 e^{-\alpha d}\,s(t - d/c)$</td>
+        <td>RF bandpass, continuous</td>
+      </tr>
+      <tr>
+        <td><strong>4. Downconversion</strong></td>
+        <td>Mix with LO, LPF</td>
+        <td>$y(t) = r(t)\cdot e^{-j2\pi f_c t}$</td>
+        <td>Baseband, continuous</td>
+      </tr>
+      <tr>
+        <td><strong>5. Baseband IQ</strong></td>
+        <td>Extract I, Q channels</td>
+        <td>$x_{BB}(t) = I(t) + jQ(t)$</td>
+        <td>Baseband, continuous</td>
+      </tr>
+      <tr>
+        <td><strong>6. ADC</strong></td>
+        <td>Sample &amp; quantize</td>
+        <td>$x[n] = x_{BB}(nT_s)$</td>
+        <td>Baseband, <strong>discrete</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="math-box" style="margin-top:24px;">
+    <div class="label">End-to-End (Simulation shortcut)</div>
+    <p style="font-size:.88rem;color:var(--text);margin-bottom:10px;">In simulation, we <em>skip</em> stages 2–4 entirely by noting that upconversion + propagation + downconversion (with identical $f_c$) reduces to:</p>
+    $$r_{BB}(t) = A_0 e^{-\alpha d}\, x_{BB}(t - \tau)\, e^{-j2\pi f_c \tau}$$
+    <p style="font-size:.88rem;color:var(--text);margin-top:8px;">The term $e^{-j2\pi f_c \tau}$ is a constant phase shift due to the RF carrier propagating over distance $d = c\tau$. This is the core of every radar simulator.</p>
+  </div>
+
+  <div class="grid-2" style="margin-top:20px;">
+    <div class="card">
+      <h3>✅ Key Takeaways</h3>
+      <ul>
+        <li>Chirp gives high range resolution via large bandwidth $B$</li>
+        <li>IQ modulation encodes all signal info in two real signals</li>
+        <li>Propagation adds delay and attenuation — both distance-dependent</li>
+        <li>Mixing + LPF moves the signal from RF to baseband</li>
+        <li>Baseband simulation saves $f_c / B$ compute factor</li>
+        <li>ADC converts to discrete samples; Nyquist prevents aliasing</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🚀 Next Steps</h3>
+      <ul>
+        <li>Matched filtering (pulse compression) on $x[n]$</li>
+        <li>2D FFT for range-Doppler processing</li>
+        <li>Beamforming across receiver array</li>
+        <li>CFAR detection on the range-Doppler map</li>
+        <li>Target parameter estimation (angle, velocity)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ============================================================
+//  UTILITY HELPERS
+// ============================================================
+const linspace = (a, b, n) => Array.from({length: n}, (_,i) => a + (b-a)*i/(n-1));
+const cos = Math.cos, sin = Math.sin, pi = Math.PI, exp = Math.exp, sqrt = Math.sqrt, abs = Math.abs;
+const TWO_PI = 2*pi;
+
+const darkLayout = (extra={}) => ({
+  paper_bgcolor: 'rgba(0,0,0,0)',
+  plot_bgcolor:  '#0d1117',
+  font: { color: '#c9d1d9', family: 'Segoe UI, system-ui, sans-serif', size: 11 },
+  xaxis: { gridcolor: '#21262d', zerolinecolor: '#30363d', linecolor: '#30363d', tickcolor: '#30363d' },
+  yaxis: { gridcolor: '#21262d', zerolinecolor: '#30363d', linecolor: '#30363d', tickcolor: '#30363d' },
+  margin: { t: 40, b: 50, l: 60, r: 20 },
+  legend: { bgcolor: 'rgba(22,27,34,.85)', bordercolor: '#30363d', borderwidth: 1 },
+  ...extra
+});
+
+const COLORS = ['#58a6ff','#3fb950','#f78166','#d2a8ff','#ffa657','#79c0ff'];
+
+function getNavBtn(i) { return document.querySelectorAll('#phase-nav button')[i]; }
+
+function showPhase(id, btn) {
+  document.querySelectorAll('.phase').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#phase-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('phase-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  // lazy-init plots (section is now visible, so Plotly measures correct width)
+  if (id === 'chirp')      initChirp();
+  if (id === 'modulation') initMod();
+  if (id === 'propagation') initProp();
+  if (id === 'downconv')   initDownconv();
+  if (id === 'baseband')   initBaseband();
+  if (id === 'adc')        initADC();
+  // force Plotly to re-measure after CSS display change
+  requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+}
+
+// ============================================================
+//  PHASE 1: CHIRP
+// ============================================================
+let chirpInited = false;
+function initChirp() { if (!chirpInited) { chirpInited = true; updateChirp(); } }
+
+function updateChirp() {
+  const f0  = parseFloat(document.getElementById('chirp-f0').value)*1e6;
+  const bw  = parseFloat(document.getElementById('chirp-bw').value)*1e6;
+  const dur = parseFloat(document.getElementById('chirp-dur').value)*1e-6;
+  const priRatio = parseFloat(document.getElementById('chirp-pri').value);
+  const view = document.getElementById('chirp-show').value;
+
+  const PRI  = dur * priRatio;          // Pulse Repetition Interval
+  const duty = (dur / PRI * 100).toFixed(1);
+  const PRF  = (1/PRI/1e3).toFixed(2);  // kHz
+
+  document.getElementById('f0-val').textContent  = (f0/1e6).toFixed(0)+' MHz';
+  document.getElementById('bw-val').textContent  = (bw/1e6).toFixed(0)+' MHz';
+  document.getElementById('dur-val').textContent = (dur/1e-6).toFixed(1)+' µs';
+  document.getElementById('pri-val').textContent = '× '+priRatio.toFixed(1)+
+    '  (PRI='+(PRI*1e6).toFixed(1)+'µs)';
+
+  const k = bw / dur;
+
+  // ── PULSED VIEW ───────────────────────────────────────────
+  if (view === 'pulsed') {
+    const nPulses = 2;
+    const totalDur = nPulses * PRI;
+    const N = 6000;
+    const t = linspace(0, totalDur, N);
+    const tus = t.map(v => v*1e6);
+
+    // Build pulsed signal and envelope
+    const sig = new Array(N).fill(0);
+    const env = new Array(N).fill(0);
+    const gateTop = new Array(N).fill(null);
+    const gateBtm = new Array(N).fill(null);
+
+    for (let i = 0; i < N; i++) {
+      const ti = t[i];
+      const pulseIdx = Math.floor(ti / PRI);
+      const tLocal   = ti - pulseIdx * PRI;  // time within PRI
+      if (tLocal >= 0 && tLocal <= dur) {
+        sig[i] = cos(TWO_PI*(f0*tLocal + 0.5*k*tLocal*tLocal));
+        env[i] = 1;
+        gateTop[i] = 1.15;
+        gateBtm[i] = -1.15;
+      }
+    }
+
+    // Annotation arrows: mark T and T_PRI for the first pulse
+    const annots = [];
+    const yAnn = 1.32;
+    // T span arrow
+    annots.push({
+      x: (dur/2)*1e6, y: yAnn, xref:'x', yref:'y',
+      text: `T = ${(dur*1e6).toFixed(1)} µs`, showarrow:false,
+      font:{color:'#3fb950',size:11}, bgcolor:'rgba(22,27,34,.8)'
+    });
+    // PRI span arrow
+    annots.push({
+      x: (PRI/2)*1e6, y: -yAnn, xref:'x', yref:'y',
+      text: `T_PRI = ${(PRI*1e6).toFixed(1)} µs`, showarrow:false,
+      font:{color:'#f78166',size:11}, bgcolor:'rgba(22,27,34,.8)'
+    });
+
+    // Shapes: vertical lines at pulse boundaries
+    const shapes = [];
+    for (let n = 0; n <= nPulses; n++) {
+      shapes.push({
+        type:'line', x0:n*PRI*1e6, x1:n*PRI*1e6,
+        y0:-1.45, y1:1.45, xref:'x', yref:'y',
+        line:{color:'rgba(247,129,102,.25)',width:1,dash:'dot'}
+      });
+      if (n < nPulses) {
+        shapes.push({
+          type:'line', x0:n*PRI*1e6, x1:n*PRI*1e6+dur*1e6,
+          y0:-1.45, y1:-1.45, xref:'x', yref:'y',
+          line:{color:'rgba(247,129,102,.35)',width:1.5}
+        });
+      }
+    }
+
+    const traces = [
+      // Rectangular gate shading
+      { x: tus, y: gateTop, fill:'none', mode:'lines',
+        line:{color:'rgba(63,185,80,.35)',width:1,dash:'dot'}, name:'Pulse gate', showlegend:true },
+      { x: tus, y: gateBtm, fill:'tonexty', mode:'lines',
+        line:{color:'rgba(63,185,80,.35)',width:1,dash:'dot'},
+        fillcolor:'rgba(63,185,80,.06)', showlegend:false },
+      // Envelope (rect window)
+      { x: tus, y: env, mode:'lines',
+        line:{color:'rgba(63,185,80,.7)',width:1.8,dash:'dash'}, name:'Envelope rect(t/T)' },
+      // Pulsed chirp signal
+      { x: tus, y: sig, mode:'lines',
+        line:{color:COLORS[0],width:1}, name:'Pulsed LFM s_p(t)', opacity:0.9 },
+    ];
+
+    Plotly.react('chirp-plot', traces, {
+      ...darkLayout(),
+      title:{ text:`Pulsed LFM Chirp — ${nPulses} pulses  |  Duty cycle = ${duty}%  |  PRF = ${PRF} kHz`,
+              font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)', range:[0, totalDur*1e6], autorange:false},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.5,1.5]},
+      annotations: annots,
+      shapes: shapes,
+      height: 400,
+      margin:{t:50,b:50,l:60,r:20}
+    });
+
+    // Show duty-cycle info callout
+    const info = document.getElementById('chirp-duty-info');
+    info.style.display = 'flex';
+    document.getElementById('chirp-duty-text').innerHTML =
+      `<strong>Duty cycle = T / T<sub>PRI</sub> = ${duty}%</strong> &nbsp;|&nbsp; ` +
+      `PRF = ${PRF} kHz &nbsp;|&nbsp; ` +
+      `T = ${(dur*1e6).toFixed(1)} µs &nbsp;|&nbsp; ` +
+      `T<sub>PRI</sub> = ${(PRI*1e6).toFixed(1)} µs &nbsp;|&nbsp; ` +
+      `TB = ${(bw*dur).toFixed(0)}`;
+    return;
+  }
+
+  // Hide duty info for other views
+  document.getElementById('chirp-duty-info').style.display = 'none';
+
+  // ── SINGLE-PULSE VIEWS ────────────────────────────────────
+  const N = 2000;
+  const t = linspace(0, dur, N);
+
+  if (view === 'time') {
+    const s = t.map(ti => cos(TWO_PI*(f0*ti + 0.5*k*ti*ti)));
+    Plotly.react('chirp-plot', [
+      {x:t.map(v=>v*1e6), y:s, type:'scatter', mode:'lines',
+       line:{color:COLORS[0],width:1.2}, name:'s(t)'}
+    ], {
+      ...darkLayout(),
+      title:{text:'Single Pulse — Chirp Waveform', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.2,1.2]}
+    });
+
+  } else if (view === 'phase') {
+    const fi = t.map(ti => (f0 + k*ti)/1e6);
+    Plotly.react('chirp-plot', [
+      {x:t.map(v=>v*1e6), y:fi, type:'scatter', mode:'lines',
+       line:{color:COLORS[1],width:2}, name:'f_i(t)'}
+    ], {
+      ...darkLayout(),
+      title:{text:'Instantaneous Frequency vs Time', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)'},
+      yaxis:{...darkLayout().yaxis, title:'Frequency (MHz)'}
+    });
+
+  } else {
+    // Spectrogram (STFT approximation)
+    const nSeg = 64, segLen = Math.floor(N/nSeg);
+    const freqs = linspace(0, (f0+bw)*1.1/1e6, 80);
+    const zData = [], tCenters = [];
+    for (let seg=0; seg<nSeg; seg++) {
+      const start = seg*segLen;
+      const tc = t[start + Math.floor(segLen/2)];
+      tCenters.push(tc*1e6);
+      const fi_c = (f0 + k*tc)/1e6;
+      const row = freqs.map(f => exp(-Math.pow((f-fi_c),2)/(2*Math.pow((bw/1e6)*0.06,2))));
+      zData.push(row);
+    }
+    Plotly.react('chirp-plot', [{
+      x:freqs, y:tCenters, z:zData,
+      type:'heatmap', colorscale:'Viridis', showscale:false
+    }], {
+      ...darkLayout(),
+      title:{text:'Chirp Spectrogram (Time-Frequency)', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Frequency (MHz)'},
+      yaxis:{...darkLayout().yaxis, title:'Time (µs)'}
+    });
+  }
+}
+
+// ============================================================
+//  PHASE 2: MODULATION
+// ============================================================
+let modInited = false;
+function initMod() { if (!modInited) { modInited = true; updateMod(); } }
+
+function updateMod() {
+  const fc = parseFloat(document.getElementById('mod-fc').value)*1e6;
+  const bw = parseFloat(document.getElementById('mod-bw').value)*1e6;
+  const view = document.getElementById('mod-view').value;
+  document.getElementById('fc-val').textContent = (fc/1e6).toFixed(0)+' MHz';
+  document.getElementById('mod-bw-val').textContent = (bw/1e6).toFixed(0)+' MHz';
+
+  const dur = 2e-6;
+  const k = bw/dur;
+  const N = 3000;
+  const t = linspace(-dur/2, dur/2, N);
+  const I_arr = t.map(ti => cos(pi*k*ti*ti));
+  const Q_arr = t.map(ti => sin(pi*k*ti*ti));
+  const tus = t.map(v=>v*1e6);
+
+  if (view === 'time') {
+    const RF = t.map((ti,i) => I_arr[i]*cos(TWO_PI*fc*ti) - Q_arr[i]*sin(TWO_PI*fc*ti));
+    const traces = [
+      {x:tus, y:I_arr, name:'I(t)', mode:'lines', line:{color:COLORS[0],width:1.5}},
+      {x:tus, y:Q_arr, name:'Q(t)', mode:'lines', line:{color:COLORS[1],width:1.5}},
+      {x:tus, y:RF, name:'RF = I·cos(2πf_c t) − Q·sin(2πf_c t)', mode:'lines', line:{color:COLORS[2],width:0.7}, opacity:0.7}
+    ];
+    Plotly.react('mod-plot', traces, {
+      ...darkLayout(),
+      title:{text:'IQ Components & RF Signal', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.3,1.3]}
+    });
+  } else if (view === 'envelope') {
+    // Show envelope over a short window
+    const Nshort = 600;
+    const ts = linspace(-dur/4, dur/4, Nshort);
+    const env = ts.map(() => 1);  // chirp envelope = 1
+    const RF2 = ts.map(ti => {
+      const ph = pi*k*ti*ti;
+      return cos(ph)*cos(TWO_PI*fc*ti) - sin(ph)*sin(TWO_PI*fc*ti);
+    });
+    const tsus = ts.map(v=>v*1e6);
+    const traces = [
+      {x:tsus, y:RF2, name:'RF waveform', mode:'lines', line:{color:COLORS[0],width:0.8}},
+      {x:tsus, y:env, name:'+Envelope', mode:'lines', line:{color:COLORS[3],width:2,dash:'dash'}},
+      {x:tsus, y:env.map(v=>-v), name:'−Envelope', mode:'lines', line:{color:COLORS[3],width:2,dash:'dash'}}
+    ];
+    Plotly.react('mod-plot', traces, {
+      ...darkLayout(),
+      title:{text:'RF Waveform & Envelope', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.4,1.4]}
+    });
+  } else {
+    // Frequency spectrum
+    const Ns = 512;
+    const ts2 = linspace(-dur/2, dur/2, Ns);
+    // Simple DFT-magnitude approximation
+    const freqMHz = linspace(-(fc+bw*1.5)/1e6, (fc+bw*1.5)/1e6, 400);
+    // Analytical: baseband chirp spectrum is approximately rect × phase, magnitude ≈ rect(f/B)
+    const bbMag = freqMHz.map(f => {
+      const fb = Math.abs(f) * 1e6;
+      return fb < bw/2 ? 1 : exp(-2*Math.pow((fb-bw/2)/(bw*0.15),2));
+    });
+    // RF spectrum = shifted to ±fc
+    const rfMag = freqMHz.map(f => {
+      const fp = (Math.abs(f) - fc/1e6)*1e6;
+      return fp < bw/2 && fp > -bw*1.5 ? 1 : exp(-2*Math.pow((Math.abs(fp)-bw/2)/(bw*0.15),2));
+    });
+    const traces = [
+      {x:freqMHz, y:bbMag, name:'Baseband spectrum', mode:'lines', line:{color:COLORS[4],width:2}, fill:'tozeroy', fillcolor:'rgba(255,166,87,.1)'},
+      {x:freqMHz, y:rfMag, name:'RF spectrum', mode:'lines', line:{color:COLORS[0],width:2}, fill:'tozeroy', fillcolor:'rgba(88,166,255,.1)'}
+    ];
+    Plotly.react('mod-plot', traces, {
+      ...darkLayout(),
+      title:{text:'Frequency Spectra: Baseband vs RF', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Frequency (MHz)'},
+      yaxis:{...darkLayout().yaxis, title:'|X(f)| (normalized)'}
+    });
+  }
+}
+
+// ============================================================
+//  PHASE 3: PROPAGATION
+// ============================================================
+let propInited = false;
+function initProp() { if (!propInited) { propInited = true; updateProp(); } }
+
+function updateProp() {
+  const alpha = parseFloat(document.getElementById('atten-alpha').value);
+  const d1 = parseFloat(document.getElementById('prop-d1').value);
+  const d2 = parseFloat(document.getElementById('prop-d2').value);
+  const d3 = parseFloat(document.getElementById('prop-d3').value);
+  const d4 = parseFloat(document.getElementById('prop-d4').value);
+  document.getElementById('atten-val').textContent = alpha.toFixed(2);
+  document.getElementById('d1-val').textContent = d1.toFixed(1)+' m';
+  document.getElementById('d2-val').textContent = d2.toFixed(1)+' m';
+  document.getElementById('d3-val').textContent = d3.toFixed(1)+' m';
+  document.getElementById('d4-val').textContent = d4.toFixed(1)+' m';
+
+  const dists = [d1, d2, d3, d4];
+  const labels = ['Rx1','Rx2','Rx3','Rx4'];
+  const N = 1000;
+  const dur = 3e-6, k = 15e12;
+  const t = linspace(0, dur, N);
+  const tus = t.map(v=>v*1e6);
+
+  // Chirp signal
+  const chirpSig = t.map(ti => cos(TWO_PI*(10e6*ti + 0.5*k*ti*ti)));
+
+  // Subplot traces for received signals
+  const traces = [];
+  dists.forEach((d, idx) => {
+    const A = exp(-alpha*d);
+    traces.push({
+      x: tus, y: chirpSig.map(v => A*v),
+      name: `${labels[idx]} (d=${d.toFixed(1)}m, A=${A.toFixed(3)})`,
+      mode:'lines',
+      line:{color:COLORS[idx], width:1.2},
+      yaxis: 'y'+(idx+1)
+    });
+  });
+
+  Plotly.react('prop-plot', traces, {
+    ...darkLayout({
+      grid:{rows:4,columns:1,pattern:'independent'},
+      yaxis:{...darkLayout().yaxis,title:'Rx1',domain:[.77,1]},
+      yaxis2:{...darkLayout().yaxis,title:'Rx2',domain:[.52,.73]},
+      yaxis3:{...darkLayout().yaxis,title:'Rx3',domain:[.27,.48]},
+      yaxis4:{...darkLayout().yaxis,title:'Rx4',domain:[0,.23]},
+      height:420,
+    }),
+    title:{text:'Received Signal at Each Receiver (chirp envelope)', font:{color:'#f0f6fc',size:13}},
+    xaxis:{...darkLayout().xaxis,title:'Time (µs)'},
+    margin:{t:40,b:50,l:70,r:20}
+  });
+
+  // Amplitude vs distance plot
+  const dArr = linspace(0.1, 5, 200);
+  const AArr = dArr.map(d => exp(-alpha*d));
+  const rxMarks = dists.map((d,i) => ({
+    x:[d], y:[exp(-alpha*d)], mode:'markers+text',
+    text:[labels[i]], textposition:'top center',
+    marker:{color:COLORS[i],size:10}, showlegend:false, type:'scatter',
+    textfont:{color:COLORS[i],size:11}
+  }));
+  Plotly.react('prop-amp-plot', [
+    {x:dArr, y:AArr, type:'scatter', mode:'lines',
+     line:{color:COLORS[0],width:2}, name:'A(d)=e^{−αd}'},
+    ...rxMarks
+  ], {
+    ...darkLayout(),
+    title:{text:'Amplitude vs Distance A(d) = e^{−αd}', font:{color:'#f0f6fc',size:13}},
+    xaxis:{...darkLayout().xaxis,title:'Distance (m)'},
+    yaxis:{...darkLayout().yaxis,title:'Amplitude (V/V)',range:[0,1.05]}
+  });
+}
+
+// ============================================================
+//  PHASE 4: DOWNCONVERSION
+// ============================================================
+let dconvInited = false;
+function initDownconv() { if (!dconvInited) { dconvInited = true; updateDownconv(); } }
+
+function updateDownconv() {
+  const frf = parseFloat(document.getElementById('dconv-frf').value)*1e6;
+  const flo = parseFloat(document.getElementById('dconv-flo').value)*1e6;
+  const view = document.getElementById('dconv-view').value;
+  document.getElementById('dconv-frf-val').textContent = (frf/1e6).toFixed(0)+' MHz';
+  document.getElementById('dconv-flo-val').textContent = (flo/1e6).toFixed(0)+' MHz';
+
+  const fIF = Math.abs(frf - flo);
+  const fSum = frf + flo;
+  const dur = 200e-9;
+  const N = 3000;
+  const t = linspace(0, dur, N);
+  const tns = t.map(v=>v*1e9);
+
+  if (view === 'time') {
+    const RF_sig = t.map(ti => cos(TWO_PI*frf*ti));
+    const LO_sig = t.map(ti => cos(TWO_PI*flo*ti));
+    const mixed  = t.map(ti => cos(TWO_PI*frf*ti)*cos(TWO_PI*flo*ti));
+    const IF_sig = t.map(ti => 0.5*cos(TWO_PI*fIF*ti));
+    const SUM_sig= t.map(ti => 0.5*cos(TWO_PI*fSum*ti));
+    Plotly.react('dconv-plot', [
+      {x:tns,y:RF_sig, name:`RF (${(frf/1e6).toFixed(0)} MHz)`, mode:'lines', line:{color:COLORS[0],width:1.5}},
+      {x:tns,y:LO_sig, name:`LO (${(flo/1e6).toFixed(0)} MHz)`, mode:'lines', line:{color:COLORS[1],width:1.5}},
+      {x:tns,y:mixed,  name:'RF × LO (mixed)', mode:'lines', line:{color:COLORS[4],width:1}},
+      {x:tns,y:IF_sig, name:`IF = |RF−LO| (${(fIF/1e6).toFixed(0)} MHz)`, mode:'lines', line:{color:COLORS[2],width:2,dash:'dash'}},
+    ], {
+      ...darkLayout(),
+      title:{text:'Downconversion: RF × LO → IF + Sum components', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (ns)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.2,1.2]}
+    });
+  } else {
+    // Frequency domain
+    const fmax = (frf+flo)*1.3/1e6;
+    const fArr = linspace(-fmax, fmax, 800);
+    const bw = (frf*0.03)/1e6;
+    const gauss = (fc, f) => exp(-0.5*Math.pow((f-fc/1e6)/bw,2));
+
+    const RF_spec = fArr.map(f => gauss(frf,f)+gauss(-frf,f));
+    const LO_spec = fArr.map(f => gauss(flo,f)*0.8+gauss(-flo,f)*0.8);
+    const IF_spec = fArr.map(f => (gauss(fIF,f)+gauss(-fIF,f))*0.5);
+    const SUM_spec= fArr.map(f => (gauss(fSum,f)+gauss(-fSum,f))*0.3);
+
+    Plotly.react('dconv-plot', [
+      {x:fArr, y:RF_spec,  name:`RF @ ±${(frf/1e6).toFixed(0)} MHz`, mode:'lines', line:{color:COLORS[0],width:2}, fill:'tozeroy', fillcolor:'rgba(88,166,255,.1)'},
+      {x:fArr, y:LO_spec,  name:`LO @ ±${(flo/1e6).toFixed(0)} MHz`, mode:'lines', line:{color:COLORS[1],width:2}, fill:'tozeroy', fillcolor:'rgba(63,185,80,.1)'},
+      {x:fArr, y:IF_spec,  name:`IF @ ±${(fIF/1e6).toFixed(0)} MHz`, mode:'lines', line:{color:COLORS[2],width:2,dash:'dash'}, fill:'tozeroy', fillcolor:'rgba(247,129,102,.1)'},
+      {x:fArr, y:SUM_spec, name:`Sum @ ±${(fSum/1e6).toFixed(0)} MHz`, mode:'lines', line:{color:COLORS[3],width:1.5,dash:'dot'}},
+    ], {
+      ...darkLayout(),
+      title:{text:'Frequency Spectrum: RF, LO, Mixer Outputs', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Frequency (MHz)'},
+      yaxis:{...darkLayout().yaxis, title:'|X(f)| (normalized)'}
+    });
+  }
+}
+
+// ============================================================
+//  PHASE 5: BASEBAND
+// ============================================================
+let bbInited = false;
+function initBaseband() { if (!bbInited) { bbInited = true; updateBaseband(); } }
+
+function updateBaseband() {
+  const fc = parseFloat(document.getElementById('bb-fc').value)*1e6;
+  const kval= parseFloat(document.getElementById('bb-k').value)*1e12;
+  const view = document.getElementById('bb-view').value;
+  document.getElementById('bb-fc-val').textContent = (fc/1e6).toFixed(0)+' MHz';
+  document.getElementById('bb-k-val').textContent = (kval/1e12).toFixed(0)+' MHz/µs';
+
+  const dur = 1e-6;
+  const N = view === 'phasor' ? 400 : 2000;
+  const t = linspace(-dur/2, dur/2, N);
+  const tus = t.map(v=>v*1e6);
+  const I_arr = t.map(ti => cos(pi*kval*ti*ti));
+  const Q_arr = t.map(ti => sin(pi*kval*ti*ti));
+
+  if (view === 'iq') {
+    Plotly.react('bb-plot', [
+      {x:tus, y:I_arr, name:'I(t) = cos(πkt²)', mode:'lines', line:{color:COLORS[0],width:1.5}},
+      {x:tus, y:Q_arr, name:'Q(t) = sin(πkt²)', mode:'lines', line:{color:COLORS[1],width:1.5}},
+    ], {
+      ...darkLayout(),
+      title:{text:'I and Q Channels (Baseband Chirp)', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.3,1.3]}
+    });
+  } else if (view === 'phasor') {
+    // Phasor trajectory I+jQ traces unit circle with accelerating rate
+    Plotly.react('bb-plot', [
+      {x:I_arr, y:Q_arr, mode:'lines+markers',
+       marker:{color:tus, colorscale:'Viridis', size:5, showscale:true, colorbar:{title:{text:'Time (µs)', font:{color:'#c9d1d9'}}, tickfont:{color:'#c9d1d9'}}},
+       line:{color:'rgba(88,166,255,.4)',width:1}, name:'phasor path',
+       hovertemplate:'I=%{x:.3f}<br>Q=%{y:.3f}<extra></extra>'},
+      // unit circle reference
+      {x:linspace(0,1,200).map(u=>cos(TWO_PI*u)), y:linspace(0,1,200).map(u=>sin(TWO_PI*u)),
+       mode:'lines', line:{color:'rgba(200,200,200,.2)',width:1,dash:'dot'}, name:'unit circle', showlegend:true}
+    ], {
+      ...darkLayout({
+        xaxis:{...darkLayout().xaxis, title:'I (Re)', range:[-1.2,1.2]},
+        yaxis:{...darkLayout().yaxis, title:'Q (Im)', range:[-1.2,1.2], scaleanchor:'x'},
+      }),
+      title:{text:'Phasor Trajectory I(t) + jQ(t) — Accelerating Rotation', font:{color:'#f0f6fc',size:13}},
+    });
+  } else {
+    // compare RF vs baseband
+    const RF = t.map((ti,i) => I_arr[i]*cos(TWO_PI*fc*ti) - Q_arr[i]*sin(TWO_PI*fc*ti));
+    const env_pos = t.map(() => 1);
+    Plotly.react('bb-plot', [
+      {x:tus, y:RF, name:'RF signal x(t)', mode:'lines', line:{color:COLORS[0],width:0.7}, opacity:0.6},
+      {x:tus, y:I_arr, name:'I(t) — Baseband', mode:'lines', line:{color:COLORS[1],width:2}},
+      {x:tus, y:Q_arr, name:'Q(t) — Baseband', mode:'lines', line:{color:COLORS[3],width:2}},
+      {x:tus, y:env_pos, name:'Envelope', mode:'lines', line:{color:COLORS[2],width:1.5,dash:'dash'}},
+    ], {
+      ...darkLayout(),
+      title:{text:'RF Waveform vs Baseband Equivalent', font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (µs)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.5,1.5]}
+    });
+  }
+}
+
+// ============================================================
+//  PHASE 6: ADC
+// ============================================================
+let adcInited = false;
+function initADC() { if (!adcInited) { adcInited = true; updateADC(); } }
+
+function updateADC() {
+  const fs    = parseFloat(document.getElementById('adc-fs').value)*1e6;
+  const fsig  = parseFloat(document.getElementById('adc-fsig').value)*1e6;
+  const Nbits = parseInt(document.getElementById('adc-bits').value);
+  const view  = document.getElementById('adc-view').value;
+  document.getElementById('adc-fs-val').textContent  = (fs/1e6).toFixed(0)+' MHz';
+  document.getElementById('adc-fsig-val').textContent= (fsig/1e6).toFixed(0)+' MHz';
+  document.getElementById('adc-bits-val').textContent= Nbits+' bits';
+
+  const Ts = 1/fs;
+  const dur = 20/fsig;
+  const Ncont = 2000;
+  const t = linspace(0, dur, Ncont);
+  const tns_cont = t.map(v=>v*1e9);
+  const sig = t.map(ti => sin(TWO_PI*fsig*ti));
+
+  // Sample points
+  const numSamp = Math.floor(dur*fs)+1;
+  const tSamp = Array.from({length:numSamp},(_,i)=>i*Ts).filter(ts=>ts<=dur);
+  const tSamp_ns = tSamp.map(v=>v*1e9);
+  const sampVals = tSamp.map(ts=>sin(TWO_PI*fsig*ts));
+
+  const nyquist = fs/2/1e6;
+  const isAliased = fsig > fs/2;
+  const fAlias = isAliased ? Math.abs(fsig - Math.round(fsig/fs)*fs)/1e6 : null;
+
+  if (view === 'sample') {
+    const stemX = [], stemY = [];
+    tSamp_ns.forEach((tx,i) => { stemX.push(tx,tx,tx,null); stemY.push(0,sampVals[i],sampVals[i],null); });
+    Plotly.react('adc-plot', [
+      {x:tns_cont, y:sig, name:'Analog signal', mode:'lines', line:{color:COLORS[0],width:2}},
+      {x:stemX, y:stemY, name:'Sample stems', mode:'lines', line:{color:COLORS[2],width:1.5}},
+      {x:tSamp_ns, y:sampVals, name:'Samples x[n]', mode:'markers',
+       marker:{color:COLORS[1],size:8,line:{color:'#fff',width:1}}},
+    ], {
+      ...darkLayout(),
+      title:{text:`ADC Sampling: f_s=${(fs/1e6).toFixed(0)} MHz, f_sig=${(fsig/1e6).toFixed(0)} MHz${isAliased?' ⚠ ALIASED':''}`,
+             font:{color: isAliased?'#f78166':'#f0f6fc', size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (ns)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.3,1.3]}
+    });
+  } else if (view === 'quant') {
+    const levels = Math.pow(2, Nbits);
+    const step = 2/levels;
+    const sampQ = sampVals.map(v => step*Math.round(v/step));
+    const stepX=[], stepY=[];
+    tSamp_ns.forEach((tx,i)=>{
+      const next = i<tSamp_ns.length-1 ? tSamp_ns[i+1] : tx+Ts*1e9;
+      stepX.push(tx,next,null); stepY.push(sampQ[i],sampQ[i],null);
+    });
+    Plotly.react('adc-plot', [
+      {x:tns_cont, y:sig, name:'Analog', mode:'lines', line:{color:COLORS[0],width:1.5, dash:'dash'}},
+      {x:stepX, y:stepY, name:`Quantized (${Nbits}-bit, ${levels} levels)`, mode:'lines', line:{color:COLORS[1],width:2}},
+      {x:tSamp_ns, y:sampQ, name:'Digital samples', mode:'markers',
+       marker:{color:COLORS[2],size:7}},
+    ], {
+      ...darkLayout(),
+      title:{text:`Quantization: ${Nbits}-bit ADC (${levels} levels, step=${step.toFixed(4)})`, font:{color:'#f0f6fc',size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (ns)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.3,1.3]}
+    });
+  } else {
+    // Aliasing demo
+    const fApparent = isAliased ? (fsig - Math.round(fsig/fs)*fs)/1e6 : fsig/1e6;
+    const sigAlias = t.map(ti => sin(TWO_PI*fApparent*1e6*ti));
+    Plotly.react('adc-plot', [
+      {x:tns_cont, y:sig, name:`True signal (${(fsig/1e6).toFixed(0)} MHz)`, mode:'lines', line:{color:COLORS[0],width:2}},
+      {x:tns_cont, y:sigAlias, name:`Apparent alias (${abs(fApparent).toFixed(1)} MHz)`, mode:'lines', line:{color:COLORS[2],width:2, dash:'dash'}},
+      {x:tSamp_ns, y:sampVals, name:'Samples', mode:'markers', marker:{color:COLORS[1],size:9}},
+    ], {
+      ...darkLayout(),
+      title:{text: isAliased ?
+        `⚠ ALIASING! f_sig=${(fsig/1e6).toFixed(0)}MHz > Nyquist ${nyquist.toFixed(0)}MHz → appears as ${abs(fApparent).toFixed(1)}MHz` :
+        `No aliasing: f_sig=${(fsig/1e6).toFixed(0)}MHz < Nyquist ${nyquist.toFixed(0)}MHz`,
+        font:{color:isAliased?'#f78166':'#3fb950', size:13}},
+      xaxis:{...darkLayout().xaxis, title:'Time (ns)'},
+      yaxis:{...darkLayout().yaxis, title:'Amplitude', range:[-1.3,1.3]}
+    });
+  }
+
+  // Info cards
+  const sqnr = (6.02*Nbits + 1.76).toFixed(1);
+  const dynRange = Math.pow(2, Nbits);
+  const nyq = (fs/2/1e6).toFixed(0);
+  document.getElementById('adc-info').innerHTML = `
+    <div class="card">
+      <h3>📊 ADC Parameters</h3>
+      <ul>
+        <li><strong>Sampling rate:</strong> ${(fs/1e6).toFixed(0)} MHz</li>
+        <li><strong>Nyquist frequency:</strong> ${nyq} MHz</li>
+        <li><strong>Bit depth:</strong> ${Nbits} bits</li>
+        <li><strong>Dynamic range:</strong> ${dynRange} levels</li>
+        <li><strong>SQNR:</strong> ${sqnr} dB</li>
+        ${isAliased ? `<li style="color:var(--accent3)"><strong>⚠ Aliased at: ${abs(fApparent).toFixed(1)} MHz</strong></li>` : '<li style="color:var(--accent2)"><strong>✅ No aliasing</strong></li>'}
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📐 Quantization Noise</h3>
+      <p>Step size: $\\Delta = V_{FS}/2^N$</p>
+      <p style="margin-top:6px;">Noise power: $\\sigma_q^2 = \\Delta^2/12$</p>
+      <p style="margin-top:6px;">SQNR: $\\approx 6.02N + 1.76 = ${sqnr}\\,\\text{dB}$</p>
+      <p style="margin-top:6px;color:var(--text-dim);font-size:.85rem;">Each extra bit gives ≈6 dB more dynamic range.</p>
+    </div>
+  `;
+  if (window.MathJax) MathJax.typesetPromise([document.getElementById('adc-info')]);
+}
+
+// ============================================================
+//  INIT on load
+// ============================================================
+window.addEventListener('load', () => {
+  // nothing to pre-init — all phases initialise lazily when their tab is clicked
+  // so Plotly always measures a visible, correctly-sized container
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+% --- Global Radar Parameters ---
+fc = 10e9            % Carrier Frequency (Hz)
+fs = 400e6           % Base Sample Rate (Hz)
+num_samples = 32768  % Total number of samples to simulate
+num_elements = 4     % Number of antenna elements in Rx array
+
+% --- Stage 0: Geometry Parameters ---
+tx_pos_x = 0         % Emitter X position (m)
+tx_pos_y = 0         % Emitter Y position (m)
+tx_pos_z = 0         % Emitter Z position (m)
+rx_pos_x = 5000      % Receiver array center X position (m)
+rx_pos_y = 0         % Receiver array center Y position (m)
+rx_pos_z = 5000      % Receiver array center Z position (m)
+
+% --- Stage 1: Waveform Parameters (Pulsed LFM) ---
+B = 20e6             % Chirp sweep bandwidth (Hz)
+duty_cycle = 0.5     % Fraction of PRI that chirp is active
+pri_samples = 256    % Pulse Repetition Interval in samples
+
+% --- Stage 4: Downconversion Parameters ---
+f_if = 150e6         % Intermediate Frequency (Hz)
+
+% --- Stage 5: ADC Parameters ---
+num_bits = 14        % ADC Quantization bits
+
+% --- Stage 6: Digital Down-Conversion Parameters ---
+decim = 8            % Decimation factor (fs_out = fs / decim)
+ntaps = 256          % Number of taps for the FIR low-pass filter
+fcut_scale = 0.8     % Filter cutoff frequency as fraction of new Nyquist

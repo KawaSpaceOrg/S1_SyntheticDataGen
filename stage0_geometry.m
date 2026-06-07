@@ -1,10 +1,7 @@
-function [tx_pos, rx_pos, rx_array] = stage0_geometry(fc, num_elements)
+function [tx_pos, rx_pos, rx_array] = stage0_geometry(fc, num_elements, tx_pos, rx_pos)
 % STAGE 0: Spatial and Geometric Configuration
 % Highlights: Coordinate System, Antenna Array Geometry
 
-% Define coordinate system, [X; Y; Z] in meters.
-tx_pos = [5000; 0; 0];     % Ground emitter, 5 km downrange on the X-axis
-rx_pos = [0; 0; 20000];    % Receiver array phase center at 20 km altitude (Z)
 
 % Define Antenna Array Geometry using Phased Array System Toolbox
 lambda = physconst('LightSpeed') / fc; % Wavelength

@@ -1,30 +1,27 @@
-function if_sig = stage4_downconversion(rx_sig, fs, f_if, image_reject_db)
-    % STAGE 4: Down conversion
-    % Highlight: Superheterodyne (translate RF to a non-zero Intermediate Freq.)
-
-    % Defaults so the stage can be called with just (rx_sig, fs)
-    if nargin < 3 || isempty(f_if),           f_if = 1e6;           end  % 1 MHz IF
-    if nargin < 4 || isempty(image_reject_db), image_reject_db = 30; end  % 30 dB IRR
+function [if_sig, t] = stage4_downconversion(rx_sig, fs, f_if)
+    % STAGE 4: Down conversion (Baseband Equivalent to IF)
+    % Physically, the 10 GHz RF is mixed with a 9.82 GHz LO.
+    % The F_rf + F_lo (19.82 GHz) sum is removed by the analog low-pass filter.
+    % The F_rf - F_lo (180 MHz) difference is the Intermediate Frequency (IF).
+    % Since our Fs is 400 MHz, we mathematically shift the baseband signal
+    % directly to 180 MHz to reproduce the final filtered IF output that the
+    % ADC actually sees.
+    %
+    % NOTE: the output is REAL (it is a physical voltage). A real signal has no
+    % quadrature component, so Q = 0 at this point -- that is correct for a real
+    % IF-sampling ADC. The complex I/Q is reconstructed later by the digital
+    % down-converter (DDC) in Stage 6, which is what a real SDR stores.
 
     N = size(rx_sig, 1);
     t = (0:N-1)' / fs;
 
-    % A superheterodyne receiver mixes the incoming signal down to a FIXED,
-    % non-zero Intermediate Frequency (IF) instead of all the way to 0 Hz.
-    % Because the signal never sits at DC, this architecture does NOT suffer
-    % the LO-leakage / DC-offset problem of a direct-conversion receiver.
-    lo = exp(1j * 2 * pi * f_if * t);     % complex LO placing the signal at +f_if
-    if_sig = rx_sig .* lo;
+    % Shift every antenna's baseband signal up to the 180 MHz IF and take the
+    % real part (the physical voltage entering the ADC). Processing all columns
+    % (instead of duplicating antenna 1) preserves the inter-element phase shift
+    % so the saved I/Q remains usable for AoA / beamforming.
+    % exp(...) is [N x 1] and broadcasts across the antenna columns of rx_sig.
+    if_sig = real(rx_sig .* exp(1j * 2 * pi * f_if * t));
 
-    % The classic impairment of the superheterodyne architecture is the IMAGE
-    % frequency: any energy on the opposite side of the LO folds on top of the
-    % wanted signal. A real RF/IF filter only partially suppresses it, set by the
-    % Image-Rejection Ratio (IRR). We model the residual image as a weak,
-    % spectrally-mirrored (conjugated) copy of the signal at -f_if.
-    irr = 10^(-image_reject_db / 20);
-    image_sig = irr * conj(rx_sig) .* exp(-1j * 2 * pi * f_if * t);
-    if_sig = if_sig + image_sig;
-
-    fprintf('Stage 4: Superheterodyne down conversion. IF = %.2f MHz, Image rejection = %.0f dB.\n', ...
-        f_if/1e6, image_reject_db);
+    fprintf('Stage 4: Downconversion. Mixer + LPF output at IF = %.1f MHz (%d channels, real).\n', ...
+        f_if/1e6, size(rx_sig, 2));
 end

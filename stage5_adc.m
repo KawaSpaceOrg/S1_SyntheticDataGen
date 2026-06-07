@@ -5,22 +5,13 @@ function adc_sig = stage5_adc(bb_sig, num_bits, full_scale_volts)
     num_levels = 2^num_bits;
     step_size = (2 * full_scale_volts) / num_levels;
     
-    % Separate into In-Phase (Real) and Quadrature (Imaginary)
-    I = real(bb_sig);
-    Q = imag(bb_sig);
+    % Clip values to full scale range (physical voltage limits of the ADC)
+    clipped_sig = bb_sig;
+    clipped_sig(clipped_sig > full_scale_volts) = full_scale_volts;
+    clipped_sig(clipped_sig < -full_scale_volts) = -full_scale_volts;
     
-    % Clip values to full scale range (optional but realistic)
-    I(I > full_scale_volts) = full_scale_volts;
-    I(I < -full_scale_volts) = -full_scale_volts;
-    Q(Q > full_scale_volts) = full_scale_volts;
-    Q(Q < -full_scale_volts) = -full_scale_volts;
-    
-    % Quantize: divide by step size, round to nearest integer, multiply back
-    I_quant = round(I / step_size) * step_size;
-    Q_quant = round(Q / step_size) * step_size;
-    
-    % Recombine complex signal
-    adc_sig = I_quant + 1j * Q_quant;
+    % Quantize: divide by voltage step size, round to nearest digital bin, multiply back
+    adc_sig = round(clipped_sig / step_size) * step_size;
     
     fprintf('Stage 5: ADC Modeling. Quantized to %d bits (%d levels).\n', num_bits, num_levels);
 end
