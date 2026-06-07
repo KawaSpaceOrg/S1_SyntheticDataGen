@@ -1,6 +1,6 @@
 # Archived planning / scratch docs (kept locally, not tracked)
 archive/
-
+.claude/
 # Generated output data
 pipeline_output.csv
 
@@ -8,3 +8,4 @@ pipeline_output.csv
 *.asv
 *.mat
 slprj/
+CLAUDE.md

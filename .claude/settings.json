@@ -1,8 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(matlab -batch \"main_pipeline; figs=flipud\\(findall\\(0,'Type','figure'\\)\\); for i=1:numel\\(figs\\); exportgraphics\\(figs\\(i\\), sprintf\\('_fig%d.png', i\\), 'Resolution',110\\); end; disp\\('SAVED'\\);\")",
-      "Bash(findstr \"SAVED Error error\")"
-    ]
-  }
-}
